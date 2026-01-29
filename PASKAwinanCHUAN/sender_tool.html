@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sender Tool Undangan</title>
+    <style>
+      :root {
+        --bg: #0f1220;
+        --card: rgba(255, 255, 255, 0.08);
+        --card2: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.68);
+        --line: rgba(255, 255, 255, 0.12);
+        --accent: #7aa2ff;
+        --good: #44d07b;
+        --warn: #ffcc66;
+        --bad: #ff6b6b;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        --radius: 14px;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        background: radial-gradient(
+            1200px 700px at 15% 10%,
+            rgba(122, 162, 255, 0.22),
+            transparent 55%
+          ),
+          radial-gradient(
+            900px 600px at 90% 10%,
+            rgba(68, 208, 123, 0.14),
+            transparent 55%
+          ),
+          radial-gradient(
+            1000px 700px at 55% 110%,
+            rgba(255, 204, 102, 0.1),
+            transparent 55%
+          ),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 26px 18px 60px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        font-size: 20px;
+        margin: 0;
+        letter-spacing: 0.2px;
+      }
+
+      .sub {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 14px;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px;
+        backdrop-filter: blur(10px);
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.86);
+        font-weight: 650;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 700px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+
+      input[type="text"],
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid var(--line);
+        background: rgba(15, 18, 32, 0.55);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 11px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      textarea {
+        min-height: 240px;
+        resize: vertical;
+        line-height: 1.45;
+        font-family: var(--sans);
+      }
+
+      input[type="file"] {
+        width: 100%;
+        border: 1px dashed var(--line);
+        background: rgba(15, 18, 32, 0.35);
+        border-radius: 12px;
+        padding: 10px;
+        color: var(--muted);
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.45;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      button {
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      button.primary {
+        border-color: rgba(122, 162, 255, 0.35);
+        background: rgba(122, 162, 255, 0.18);
+      }
+
+      button.good {
+        border-color: rgba(68, 208, 123, 0.35);
+        background: rgba(68, 208, 123, 0.14);
+      }
+
+      button.warn {
+        border-color: rgba(255, 204, 102, 0.38);
+        background: rgba(255, 204, 102, 0.14);
+      }
+
+      button.bad {
+        border-color: rgba(255, 107, 107, 0.35);
+        background: rgba(255, 107, 107, 0.14);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .inline {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .inline > * {
+        flex: 1;
+      }
+
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .kbd {
+        font-family: var(--mono);
+        font-size: 12px;
+        border: 1px solid var(--line);
+        padding: 2px 6px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .list {
+        margin-top: 10px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        overflow: hidden;
+        border-radius: 12px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      th {
+        color: rgba(255, 255, 255, 0.78);
+        font-weight: 650;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .link {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.82);
+        word-break: break-all;
+      }
+
+      .chip {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.92);
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+
+      .mono {
+        font-family: var(--mono);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .right {
+        text-align: right;
+      }
+
+      .danger {
+        color: var(--bad);
+      }
+
+      .ok {
+        color: var(--good);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Sender Tool — Undangan Dinamis</h1>
+          <p class="sub">
+            Buat link undangan per tamu (<span class="mono"
+              >?to=Nama%20Tamu</span
+            >) dan siapkan teks pengantar yang siap dibagikan.
+          </p>
+        </div>
+        <div class="pill">
+          Offline-friendly • Simpan otomatis (LocalStorage)
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Pengaturan Undangan</h2>
+          <div class="row">
+            <div>
+              <label>Yang mengundang (nama calon pengantin)</label>
+              <input
+                id="inviter"
+                type="text"
+                placeholder="Contoh: Chuan & Paskaria"
+              />
+              <div class="hint">
+                Akan mengisi placeholder
+                <span class="kbd">[yang-mengundang]</span>
+              </div>
+            </div>
+            <div>
+              <label>Link undangan (base URL)</label>
+              <input
+                id="baseLink"
+                type="text"
+                placeholder="Contoh: https://domainkamu.com/PASKAwinanCHUAN.html"
+              />
+              <div class="hint">
+                Tool akan membuat link:
+                <span class="kbd">baseLink?to=Nama%20Tamu</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 10px"></div>
+
+          <label>Isi kata pengantar (template)</label>
+          <textarea id="template"></textarea>
+          <div class="hint">
+            Placeholder yang tersedia: <span class="kbd">[nama-tamu]</span>,
+            <span class="kbd">[link-undangan]</span>,
+            <span class="kbd">[yang-mengundang]</span>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="btnResetTemplate">
+              Reset template
+            </button>
+            <button class="warn" id="btnCopyTemplate">
+              Copy template (tanpa nama)
+            </button>
+            <button class="bad" id="btnClearAll">Clear semua data</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Daftar Tamu</h2>
+
+          <label>Tambah manual (tekan Enter)</label>
+          <div class="inline">
+            <input
+              id="guestInput"
+              type="text"
+              placeholder="Ketik nama tamu lalu Enter"
+            />
+            <button class="good" id="btnAdd">Tambah</button>
+          </div>
+          <div class="hint">
+            Tips: bisa paste banyak nama sekaligus (pisah baris) lalu klik
+            <b>Tambah</b>.
+          </div>
+
+          <div style="height: 10px"></div>
+
+          <label>Import Excel (XLS/XLSX)</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" />
+          <div class="hint">
+            Format sederhana: kolom pertama berisi <b>Nama Tamu</b>. Baris
+            pertama boleh header. Hanya file Excel (.xlsx, .xls) yang didukung.
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="btnGenerate">
+              Generate daftar & link
+            </button>
+            <button class="warn" id="btnExportXlsx">Export Excel (XLSX)</button>
+          </div>
+
+          <div class="list">
+            <div class="inline" style="align-items: baseline">
+              <div class="small">
+                Total: <span class="chip" id="countGuests">0</span>
+                <span class="muted">•</span>
+                Duplikat akan digabung.
+              </div>
+              <div class="right small" id="status"></div>
+            </div>
+
+            <div style="height: 10px"></div>
+            <div style="overflow: auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 36px">#</th>
+                    <th>Nama Tamu</th>
+                    <th>Link Undangan</th>
+                    <th style="width: 270px">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="guestTable"></tbody>
+              </table>
+            </div>
+
+            <div class="hint" style="margin-top: 10px">
+              Aksi <b>WhatsApp</b> akan membuka chat dengan teks pengantar yang
+              sudah terisi. Jika browser tidak mengizinkan otomatis, gunakan
+              <b>Copy</b> lalu paste manual.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- SheetJS for Excel import (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+    <script>
+      const LS_KEY = "sender_tool_v1";
+
+      const DEFAULT_TEMPLATE = `Kepada Yth.
+Bapak/Ibu/Saudara/i
+*[nama-tamu]*
+_____________________
+
+Salam Sejahtera Bagi Kita Semua.Tuhan membuat segala sesuatu indah pada waktunya dan mempersatukan kami dalam suatu ikatan pernikahan kudus, semoga Tuhan memberkati dalam mengiringi pernikahan kami.
+
+Tanpa mengurangi rasa hormat, perkenankan kami mengundang Bapak/Ibu/Saudara/i untuk menghadiri acara pernikahan kami.
+
+Untuk informasi detail Acara, Lokasi, dan Waktu lebih lengkap bisa akses link undangan berikut:
+[link-undangan]
+
+Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir dan memberikan doa restu di acara pernikahan kami.
+Karena keterbatasan jarak dan waktu tidak dapat mengirimkan undangan ini secara langsung, maka melalui e-invitation ini dapat menjadi pengganti undangan resmi sehingga tujuan kami tersampaikan.
+
+Hormat kami,
+[yang-mengundang]
+____________________`;
+
+      const el = (id) => document.getElementById(id);
+
+      const inviterEl = el("inviter");
+      const baseLinkEl = el("baseLink");
+      const templateEl = el("template");
+      const guestInputEl = el("guestInput");
+      const fileInputEl = el("fileInput");
+      const guestTableEl = el("guestTable");
+      const countGuestsEl = el("countGuests");
+      const statusEl = el("status");
+      const toastEl = el("toast");
+
+      let guests = []; // array of strings
+
+      function toast(msg, kind = "info") {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        toastEl.style.borderColor =
+          kind === "bad"
+            ? "rgba(255,107,107,0.35)"
+            : kind === "good"
+            ? "rgba(68,208,123,0.35)"
+            : "rgba(255,255,255,0.14)";
+        setTimeout(() => toastEl.classList.remove("show"), 1600);
+      }
+
+      function normalizeName(name) {
+        return (name || "").toString().replace(/\s+/g, " ").trim();
+      }
+
+      function uniqueSorted(list) {
+        const map = new Map();
+        list.forEach((n) => {
+          const clean = normalizeName(n);
+          if (!clean) return;
+          map.set(clean.toLowerCase(), clean);
+        });
+        return Array.from(map.values()).sort((a, b) =>
+          a.localeCompare(b, "id")
+        );
+      }
+
+      function buildGuestLink(base, name) {
+        const b = (base || "").trim();
+        if (!b) return "";
+        const hasQuery = b.includes("?");
+        const sep = hasQuery ? "&" : "?";
+        return `${b}${sep}to=${encodeURIComponent(name)}`;
+      }
+
+      function fillTemplateForGuest(name) {
+        const inviter = inviterEl.value.trim();
+        const base = baseLinkEl.value.trim();
+        const link = buildGuestLink(base, name);
+
+        return (templateEl.value || "")
+          .replaceAll("[nama-tamu]", name)
+          .replaceAll("[link-undangan]", link)
+          .replaceAll("[yang-mengundang]", inviter || "[yang-mengundang]");
+      }
+
+      function saveState() {
+        const state = {
+          inviter: inviterEl.value,
+          baseLink: baseLinkEl.value,
+          template: templateEl.value,
+          guests,
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      }
+
+      function loadState() {
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) {
+          templateEl.value = DEFAULT_TEMPLATE;
+          return;
+        }
+        try {
+          const state = JSON.parse(raw);
+          inviterEl.value = state.inviter || "";
+          baseLinkEl.value = state.baseLink || "";
+          templateEl.value = state.template || DEFAULT_TEMPLATE;
+          guests = Array.isArray(state.guests) ? state.guests : [];
+          guests = uniqueSorted(guests);
+          renderTable();
+        } catch {
+          templateEl.value = DEFAULT_TEMPLATE;
+        }
+      }
+
+      function renderTable() {
+        guests = uniqueSorted(guests);
+        countGuestsEl.textContent = String(guests.length);
+        guestTableEl.innerHTML = "";
+
+        const base = baseLinkEl.value.trim();
+
+        guests.forEach((name, idx) => {
+          const link = buildGuestLink(base, name);
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td>
+              <div style="font-weight:650">${escapeHtml(name)}</div>
+              <div class="small muted">${escapeHtml(previewLabel(name))}</div>
+            </td>
+            <td><div class="link">${escapeHtml(
+              link || "(isi link undangan dulu)"
+            )}</div></td>
+            <td>
+              <div class="actions" style="margin:0">
+                <button class="good" data-act="copy-link" data-name="${escapeAttr(
+                  name
+                )}">Copy Link</button>
+                <button class="primary" data-act="copy-text" data-name="${escapeAttr(
+                  name
+                )}">Copy Teks</button>
+                <button class="warn" data-act="wa" data-name="${escapeAttr(
+                  name
+                )}">WhatsApp</button>
+                <button class="bad" data-act="del" data-name="${escapeAttr(
+                  name
+                )}">Hapus</button>
+              </div>
+            </td>
+          `;
+          guestTableEl.appendChild(tr);
+        });
+
+        saveState();
+      }
+
+      function previewLabel(name) {
+        // simple label line for readability
+        return `to=${encodeURIComponent(name)}`;
+      }
+
+      function escapeHtml(s) {
+        return (s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      }
+      function escapeAttr(s) {
+        return escapeHtml(s);
+      }
+
+      async function copyToClipboard(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          toast("Tersalin ke clipboard", "good");
+        } catch {
+          // fallback
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          toast("Tersalin ke clipboard", "good");
+        }
+      }
+
+      function addGuestsFromText(raw) {
+        const lines = (raw || "")
+          .split(/\r?\n/)
+          .map((x) => normalizeName(x))
+          .filter(Boolean);
+        if (!lines.length) return;
+        guests = uniqueSorted([...guests, ...lines]);
+        renderTable();
+        toast(`Tambah ${lines.length} nama`, "good");
+      }
+
+      function ensureBaseLink() {
+        const b = baseLinkEl.value.trim();
+        if (!b) {
+          toast("Isi dulu Link undangan (base URL).", "bad");
+          return false;
+        }
+        return true;
+      }
+
+      function exportXlsx() {
+        if (!guests.length) {
+          toast("Daftar tamu masih kosong.", "bad");
+          return;
+        }
+        if (!ensureBaseLink()) return;
+
+        const base = baseLinkEl.value.trim();
+        const rows = [["nama_tamu", "link_undangan"]];
+        guests.forEach((name) => rows.push([name, buildGuestLink(base, name)]));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // Optional: set nicer column widths
+        ws["!cols"] = [{ wch: 32 }, { wch: 80 }];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Undangan");
+        XLSX.writeFile(wb, "undangan_links.xlsx");
+        toast("Excel terunduh", "good");
+      }
+
+      function openWhatsApp(name) {
+        if (!ensureBaseLink()) return;
+        const msg = fillTemplateForGuest(name);
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, "_blank", "noopener");
+      }
+
+      // Events
+      el("btnAdd").addEventListener("click", () => {
+        addGuestsFromText(guestInputEl.value);
+        guestInputEl.value = "";
+        guestInputEl.focus();
+      });
+
+      guestInputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          el("btnAdd").click();
+        }
+      });
+
+      inviterEl.addEventListener("input", saveState);
+      baseLinkEl.addEventListener("input", () => {
+        saveState();
+        renderTable();
+      });
+      templateEl.addEventListener("input", saveState);
+
+      el("btnResetTemplate").addEventListener("click", () => {
+        templateEl.value = DEFAULT_TEMPLATE;
+        saveState();
+        toast("Template di-reset", "good");
+      });
+
+      el("btnCopyTemplate").addEventListener("click", () => {
+        copyToClipboard(templateEl.value || "");
+      });
+
+      el("btnClearAll").addEventListener("click", () => {
+        if (
+          !confirm(
+            "Hapus semua data (inviter, link, template, dan daftar tamu)?"
+          )
+        )
+          return;
+        guests = [];
+        inviterEl.value = "";
+        baseLinkEl.value = "";
+        templateEl.value = DEFAULT_TEMPLATE;
+        saveState();
+        renderTable();
+        toast("Semua data dihapus", "good");
+      });
+
+      el("btnGenerate").addEventListener("click", () => {
+        guests = uniqueSorted(guests);
+        renderTable();
+        toast("Daftar diperbarui", "good");
+      });
+
+      el("btnExportXlsx").addEventListener("click", exportXlsx);
+
+      guestTableEl.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const act = btn.getAttribute("data-act");
+        const name = btn.getAttribute("data-name");
+        if (!act || !name) return;
+
+        if (act === "del") {
+          guests = guests.filter((g) => g.toLowerCase() !== name.toLowerCase());
+          renderTable();
+          toast("Tamu dihapus", "good");
+          return;
+        }
+
+        if (act === "copy-link") {
+          if (!ensureBaseLink()) return;
+          const link = buildGuestLink(baseLinkEl.value.trim(), name);
+          await copyToClipboard(link);
+          return;
+        }
+
+        if (act === "copy-text") {
+          if (!ensureBaseLink()) return;
+          const msg = fillTemplateForGuest(name);
+          await copyToClipboard(msg);
+          return;
+        }
+
+        if (act === "wa") {
+          openWhatsApp(name);
+          return;
+        }
+      });
+
+      // File import
+      fileInputEl.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        statusEl.textContent = "Membaca file...";
+
+        try {
+          const data = await file.arrayBuffer();
+          const wb = XLSX.read(data, { type: "array" });
+          const wsName = wb.SheetNames[0];
+          const ws = wb.Sheets[wsName];
+
+          const rows = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            blankrows: false,
+          });
+          const names = rows
+            .map((r) => (r && r.length ? r[0] : ""))
+            .map((x) => normalizeName(x))
+            .filter(Boolean);
+
+          const cleaned = names.filter((n, i) => !(i === 0 && /nama/i.test(n)));
+          guests = uniqueSorted([...guests, ...cleaned]);
+          renderTable();
+          toast(`Import ${cleaned.length} nama (Excel)`, "good");
+        } catch (err) {
+          console.error(err);
+          toast(
+            "Gagal membaca file Excel. Periksa struktur file (kolom pertama berisi Nama Tamu) dan coba lagi.",
+            "bad"
+          );
+        } finally {
+          statusEl.textContent = "";
+          fileInputEl.value = "";
+          saveState();
+        }
+      });
+
+      // Init
+      loadState();
+
+      // Nice default for baseLink if user opened sender_tool.html from same folder
+      (function autoFillBaseLink() {
+        if (baseLinkEl.value.trim()) return;
+        try {
+          const url = new URL(window.location.href);
+          // if sender_tool.html is in same folder, suggest PASKAwinanCHUAN.html
+          const suggested = url.href.replace(
+            /sender_tool\.html(\?.*)?$/i,
+            "PASKAwinanCHUAN.html"
+          );
+          baseLinkEl.value = suggested;
+          saveState();
+        } catch {
+          // ignore
+        }
+      })();
+    </script>
+  </body>
+</html>
