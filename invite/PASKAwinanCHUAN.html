@@ -27,7 +27,7 @@
     <meta name="robots" content="follow, noindex" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="Wedding Invitation" />
+    <meta property="og:title" content="Wedding" />
     <meta property="og:description" content="25 April 2026" />
     <meta property="og:url" content="#" />
     <meta property="og:site_name" content="#" />
@@ -7519,24 +7519,177 @@
           >
             <div class="elementor-widget-container">
               <script>
-                function getUrlParameter(e) {
-                  let t = new URLSearchParams(window.location.search);
-                  return t.get(e);
+                function getUrlParameter(key) {
+                  const params = new URLSearchParams(window.location.search);
+                  return params.get(key);
                 }
-                function decodeGuestName(e) {
-                  return e ? decodeURIComponent(e.replace(/\+/g, " ")) : null;
+
+                function decodeGuestName(v) {
+                  return v
+                    ? decodeURIComponent(String(v).replace(/\+/g, " "))
+                    : null;
                 }
-                function setGuestName() {
-                  let e = document.querySelectorAll(".nama");
-                  if (0 === e.length) return;
-                  let t = getUrlParameter("to");
-                  if (!t) return;
-                  let n = decodeGuestName(t) || "Tamu Undangan";
-                  e.forEach((e) => {
-                    let t = e.querySelector(".elementor-heading-title");
-                    t && (t.textContent = n);
+
+                function applyGuestName(name) {
+                  const targets = document.querySelectorAll(".nama");
+                  if (!targets || targets.length === 0) return;
+                  const safe =
+                    name && String(name).trim()
+                      ? String(name).trim()
+                      : "Tamu Undangan";
+                  targets.forEach((wrap) => {
+                    const t = wrap.querySelector(".elementor-heading-title");
+                    if (t) t.textContent = safe;
                   });
                 }
+
+                function ensurePickerStyles() {
+                  if (document.getElementById("guest-picker-style")) return;
+                  const s = document.createElement("style");
+                  s.id = "guest-picker-style";
+                  s.textContent = `
+        .guest-picker-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:999999}
+        .guest-picker-card{width:min(92vw,420px);background:#fff;border-radius:14px;padding:14px 14px 12px;box-shadow:0 18px 60px rgba(0,0,0,.35);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+        .guest-picker-title{margin:0 0 6px;font-size:14px;font-weight:700;color:#111}
+        .guest-picker-sub{margin:0 0 10px;font-size:12px;color:rgba(0,0,0,.65);line-height:1.45}
+        .guest-picker-row{display:flex;gap:8px;align-items:center}
+        .guest-picker-input{flex:1;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:10px 10px;font-size:14px;outline:none}
+        .guest-picker-btn{border:1px solid rgba(0,0,0,.18);background:#111;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:650;cursor:pointer}
+        .guest-picker-btn:disabled{opacity:.55;cursor:not-allowed}
+        .guest-picker-list{margin-top:10px;max-height:46vh;overflow:auto;border:1px solid rgba(0,0,0,.10);border-radius:12px}
+        .guest-picker-item{padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.08);cursor:pointer;font-size:13px;color:#111}
+        .guest-picker-item:last-child{border-bottom:none}
+        .guest-picker-item:hover{background:rgba(0,0,0,.04)}
+        .guest-picker-muted{padding:10px 12px;font-size:12px;color:rgba(0,0,0,.6)}
+      `;
+                  document.head.appendChild(s);
+                }
+
+                function openGuestPicker(names) {
+                  ensurePickerStyles();
+                  const overlay = document.createElement("div");
+                  overlay.className = "guest-picker-overlay";
+
+                  const card = document.createElement("div");
+                  card.className = "guest-picker-card";
+
+                  card.innerHTML = `
+        <h3 class="guest-picker-title">Pilih Nama Tamu</h3>
+        <p class="guest-picker-sub">Nama tamu akan diambil dari <b>sender_tool.php</b>. Kamu juga bisa mengetik manual jika belum ada di daftar.</p>
+        <div class="guest-picker-row">
+          <input class="guest-picker-input" id="guestPickerInput" type="text" placeholder="Ketik nama tamu..." />
+          <button class="guest-picker-btn" id="guestPickerUseBtn">Gunakan</button>
+        </div>
+        <div class="guest-picker-list" id="guestPickerList"></div>
+      `;
+
+                  overlay.appendChild(card);
+                  document.body.appendChild(overlay);
+
+                  const input = card.querySelector("#guestPickerInput");
+                  const list = card.querySelector("#guestPickerList");
+                  const useBtn = card.querySelector("#guestPickerUseBtn");
+
+                  function normalize(x) {
+                    return String(x || "")
+                      .replace(/\s+/g, " ")
+                      .trim();
+                  }
+
+                  const all = (Array.isArray(names) ? names : [])
+                    .map((x) =>
+                      typeof x === "string"
+                        ? x
+                        : x && (x.name || x.nama || x.guest || x.guestname)
+                    )
+                    .map((x) => normalize(x))
+                    .filter(Boolean);
+
+                  function render(filter = "") {
+                    const f = normalize(filter).toLowerCase();
+                    const shown = !f
+                      ? all
+                      : all.filter((n) => n.toLowerCase().includes(f));
+                    list.innerHTML = "";
+                    if (!shown.length) {
+                      const div = document.createElement("div");
+                      div.className = "guest-picker-muted";
+                      div.textContent = all.length
+                        ? "Tidak ada yang cocok. Silakan ketik manual lalu klik Gunakan."
+                        : "Daftar tamu kosong. Silakan ketik manual lalu klik Gunakan.";
+                      list.appendChild(div);
+                      return;
+                    }
+                    shown.slice(0, 200).forEach((n) => {
+                      const item = document.createElement("div");
+                      item.className = "guest-picker-item";
+                      item.textContent = n;
+                      item.addEventListener("click", () => useName(n));
+                      list.appendChild(item);
+                    });
+                  }
+
+                  function useName(n) {
+                    const name = normalize(n) || "Tamu Undangan";
+                    applyGuestName(name);
+
+                    // set URL parameter ?to=... (without reload)
+                    try {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("to", name);
+                      window.history.replaceState({}, "", url.toString());
+                    } catch {}
+
+                    overlay.remove();
+                  }
+
+                  useBtn.addEventListener("click", () => useName(input.value));
+                  input.addEventListener("input", () => render(input.value));
+                  input.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      useName(input.value);
+                    }
+                  });
+
+                  // click outside to close (keeps default name)
+                  overlay.addEventListener("click", (e) => {
+                    if (e.target === overlay) overlay.remove();
+                  });
+
+                  render("");
+                  setTimeout(() => input && input.focus(), 50);
+                }
+
+                async function fetchGuestListFromServer() {
+                  // Expected endpoint: sender_tool.php?action=list
+                  // Response can be: ["Nama 1","Nama 2"] or [{"name":"..."}] or [{"nama":"..."}]
+                  const url = "sender_tool.php?action=list";
+                  const res = await fetch(url, { cache: "no-store" });
+                  if (!res.ok) throw new Error("HTTP " + res.status);
+                  return await res.json();
+                }
+
+                async function setGuestName() {
+                  // 1) Prefer URL param ?to=
+                  const to = getUrlParameter("to");
+                  if (to) {
+                    const name = decodeGuestName(to) || "Tamu Undangan";
+                    applyGuestName(name);
+                    return;
+                  }
+
+                  // 2) If no ?to=, try to load list from sender_tool.php and let user pick
+                  applyGuestName("Tamu Undangan");
+                  try {
+                    const list = await fetchGuestListFromServer();
+                    openGuestPicker(list);
+                  } catch (err) {
+                    // If the endpoint isn't available, just keep default
+                    console.warn("Guest list fetch failed:", err);
+                  }
+                }
+
                 document.addEventListener("DOMContentLoaded", setGuestName);
               </script>
             </div>
@@ -7941,7 +8094,7 @@
               >
                 <input type="hidden" name="post_id" value="19596" />
                 <input type="hidden" name="form_id" value="313766b" />
-                <input type="hidden" name="referer_title" value="PASKAwinanCHUAN" />
+                <input type="hidden" name="referer_title" value="Roseline" />
 
                 <input type="hidden" name="queried_id" value="19596" />
 
@@ -8669,7 +8822,106 @@
           data-element_type="container"
           data-settings='{"background_background":"classic"}'
         >
-          
+          <div
+            class="elementor-element elementor-element-0ab9e4b e-con-full reanimate left e-flex e-con e-child"
+            data-id="0ab9e4b"
+            data-element_type="container"
+          >
+            <div
+              class="elementor-element elementor-element-11d4031 elementor-widget elementor-widget-heading"
+              data-id="11d4031"
+              data-element_type="widget"
+              data-widget_type="heading.default"
+            >
+              <div class="elementor-widget-container">
+                <h2 class="elementor-heading-title elementor-size-default">
+                  _____
+                </h2>
+              </div>
+            </div>
+            <div
+              class="elementor-element elementor-element-47d1aab elementor-widget elementor-widget-heading"
+              data-id="47d1aab"
+              data-element_type="widget"
+              data-widget_type="heading.default"
+            >
+              <div class="elementor-widget-container">
+                <h2 class="elementor-heading-title elementor-size-default">
+                  Instagram Story Template
+                </h2>
+              </div>
+            </div>
+          </div>
+          <div
+            class="elementor-element elementor-element-ccb90d3 e-con-full e-flex elementor-invisible e-con e-child"
+            data-id="ccb90d3"
+            data-element_type="container"
+            data-settings='{"background_background":"classic","animation":"fadeInUp","animation_mobile":"none"}'
+          >
+            <div
+              class="elementor-element elementor-element-89e0b73 reanimate left elementor-widget elementor-widget-heading"
+              data-id="89e0b73"
+              data-element_type="widget"
+              data-widget_type="heading.default"
+            >
+              <div class="elementor-widget-container">
+                <h2 class="elementor-heading-title elementor-size-default">
+                  Abadikan momen bahagia di acara pernikahan kami dengan
+                  menggunakan template Instagram Story yang telah kami sediakan
+                  dibawah ini.
+                </h2>
+              </div>
+            </div>
+            <div
+              class="elementor-element elementor-element-4d51723 reanimate up elementor-widget elementor-widget-image"
+              data-id="4d51723"
+              data-element_type="widget"
+              data-widget_type="image.default"
+            >
+              <div class="elementor-widget-container">
+                <img
+                  decoding="async"
+                  width="576"
+                  height="1024"
+                  src="../wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg--576x1024.jpg"
+                  class="attachment-large size-large wp-image-52440"
+                  alt=""
+                  srcset="
+                    https://wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg--576x1024.jpg  576w,
+                    https://wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg--169x300.jpg   169w,
+                    https://wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg--768x1365.jpg  768w,
+                    https://wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg--864x1536.jpg  864w,
+                    https://wp.envelope.id/wp-content/uploads/2025/11/inv_117_hk9rJHg-.jpg          1080w
+                  "
+                  sizes="(max-width: 576px) 100vw, 576px"
+                />
+              </div>
+            </div>
+            <div
+              class="elementor-element elementor-element-42bffe4 elementor-align-center reanimate up elementor-mobile-align-center elementor-widget elementor-widget-button"
+              data-id="42bffe4"
+              data-element_type="widget"
+              data-widget_type="button.default"
+            >
+              <div class="elementor-widget-container">
+                <div class="elementor-button-wrapper">
+                  <a
+                    class="elementor-button elementor-button-link elementor-size-sm"
+                    href="https://instagram.com/envelope.id"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="elementor-button-content-wrapper">
+                      <span class="elementor-button-text"
+                        >GUNAKAN TEMPLATE</span
+                      >
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div
           class="elementor-element elementor-element-9e725e1 e-con-full e-flex e-con e-child"
           data-id="9e725e1"
@@ -9698,8 +9950,7 @@
           id: 19596,
           title: "Wedding Invitation - Chuan & Paskaria",
           excerpt: "",
-          featuredImage:
-            "#",
+          featuredImage: "#",
         },
       };
     </script>
