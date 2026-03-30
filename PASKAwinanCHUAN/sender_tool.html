@@ -857,12 +857,7 @@ ____________________`;
           }
 
           const url = new URL(window.location.href);
-
-          const suggested = url.href
-            .replace(/sender_tool\.html(\?.*)?$/i, "")
-            .replace(/\/$/, "");
-
-          baseLinkEl.value = suggested;
+          baseLinkEl.value = `${url.origin}/invite/PASKAwinanCHUAN`;
           saveState();
         } catch {
           // ignore
