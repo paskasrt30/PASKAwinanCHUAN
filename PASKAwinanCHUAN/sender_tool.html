@@ -562,7 +562,13 @@ ____________________`;
         try {
           const state = JSON.parse(raw);
           inviterEl.value = state.inviter || "";
-          baseLinkEl.value = state.baseLink || "";
+
+          const savedBaseLink = (state.baseLink || "").replace(
+            /\.html(?=$|[?#])/i,
+            ""
+          );
+          baseLinkEl.value = savedBaseLink;
+
           templateEl.value = state.template || DEFAULT_TEMPLATE;
           guests = Array.isArray(state.guests) ? state.guests : [];
           guests = uniqueSorted(guests);
@@ -571,6 +577,9 @@ ____________________`;
           templateEl.value = DEFAULT_TEMPLATE;
         }
       }
+
+      // Init
+      loadState();
 
       function renderTable() {
         guests = uniqueSorted(guests);
@@ -835,14 +844,24 @@ ____________________`;
 
       // Nice default for baseLink if user opened sender_tool.html from same folder
       (function autoFillBaseLink() {
-        if (baseLinkEl.value.trim()) return;
         try {
+          const currentValue = (baseLinkEl.value || "").trim();
+
+          if (currentValue) {
+            const cleaned = currentValue.replace(/\.html(?=$|[?#])/i, "");
+            if (cleaned !== currentValue) {
+              baseLinkEl.value = cleaned;
+              saveState();
+            }
+            return;
+          }
+
           const url = new URL(window.location.href);
-          // if sender_tool.html is in same folder, suggest PASKAwinanCHUAN.html
-          const suggested = url.href.replace(
-            /sender_tool\.html(\?.*)?$/i,
-            "PASKAwinanCHUAN"
-          );
+
+          const suggested = url.href
+            .replace(/sender_tool\.html(\?.*)?$/i, "")
+            .replace(/\/$/, "");
+
           baseLinkEl.value = suggested;
           saveState();
         } catch {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sender Tool PASKAwinanCHUAN</title>
+    <title>Sender Tool Undangan</title>
     <style>
       :root {
         --bg: #0f1220;
@@ -324,7 +324,7 @@
     <div class="wrap">
       <header>
         <div>
-          <h1>Sender Tool — Undangan PASKAwinanCHUAN</h1>
+          <h1>Sender Tool — Undangan Dinamis</h1>
           <p class="sub">
             Buat link undangan per tamu (<span class="mono"
               >?to=Nama%20Tamu</span
@@ -406,18 +406,18 @@
 
           <div style="height: 10px"></div>
 
-          <label>Import Excel / CSV</label>
-          <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+          <label>Import Excel (XLS/XLSX)</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" />
           <div class="hint">
             Format sederhana: kolom pertama berisi <b>Nama Tamu</b>. Baris
-            pertama boleh header.
+            pertama boleh header. Hanya file Excel (.xlsx, .xls) yang didukung.
           </div>
 
           <div class="actions">
             <button class="primary" id="btnGenerate">
               Generate daftar & link
             </button>
-            <button class="warn" id="btnExportCsv">Export CSV link</button>
+            <button class="warn" id="btnExportXlsx">Export Excel (XLSX)</button>
           </div>
 
           <div class="list">
@@ -562,7 +562,13 @@ ____________________`;
         try {
           const state = JSON.parse(raw);
           inviterEl.value = state.inviter || "";
-          baseLinkEl.value = state.baseLink || "";
+
+          const savedBaseLink = (state.baseLink || "").replace(
+            /\.html(?=$|[?#])/i,
+            ""
+          );
+          baseLinkEl.value = savedBaseLink;
+
           templateEl.value = state.template || DEFAULT_TEMPLATE;
           guests = Array.isArray(state.guests) ? state.guests : [];
           guests = uniqueSorted(guests);
@@ -571,6 +577,9 @@ ____________________`;
           templateEl.value = DEFAULT_TEMPLATE;
         }
       }
+
+      // Init
+      loadState();
 
       function renderTable() {
         guests = uniqueSorted(guests);
@@ -673,7 +682,7 @@ ____________________`;
         return true;
       }
 
-      function exportCsv() {
+      function exportXlsx() {
         if (!guests.length) {
           toast("Daftar tamu masih kosong.", "bad");
           return;
@@ -684,20 +693,15 @@ ____________________`;
         const rows = [["nama_tamu", "link_undangan"]];
         guests.forEach((name) => rows.push([name, buildGuestLink(base, name)]));
 
-        const csv = rows
-          .map((r) =>
-            r.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(",")
-          )
-          .join("\n");
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
 
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "undangan_links.csv";
-        a.click();
-        URL.revokeObjectURL(url);
-        toast("CSV terunduh", "good");
+        // Optional: set nicer column widths
+        ws["!cols"] = [{ wch: 32 }, { wch: 80 }];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Undangan");
+        XLSX.writeFile(wb, "undangan_links.xlsx");
+        toast("Excel terunduh", "good");
       }
 
       function openWhatsApp(name) {
@@ -760,7 +764,7 @@ ____________________`;
         toast("Daftar diperbarui", "good");
       });
 
-      el("btnExportCsv").addEventListener("click", exportCsv);
+      el("btnExportXlsx").addEventListener("click", exportXlsx);
 
       guestTableEl.addEventListener("click", async (e) => {
         const btn = e.target.closest("button");
@@ -803,50 +807,29 @@ ____________________`;
 
         statusEl.textContent = "Membaca file...";
 
-        const ext = (file.name.split(".").pop() || "").toLowerCase();
-
         try {
-          if (ext === "csv") {
-            const text = await file.text();
-            const lines = text
-              .split(/\r?\n/)
-              .map((l) => l.split(",")[0]) // first column
-              .map((x) => normalizeName(x.replace(/^"|"$/g, "")))
-              .filter(Boolean);
+          const data = await file.arrayBuffer();
+          const wb = XLSX.read(data, { type: "array" });
+          const wsName = wb.SheetNames[0];
+          const ws = wb.Sheets[wsName];
 
-            // remove header if it looks like header
-            const cleaned = lines.filter(
-              (n, i) => !(i === 0 && /nama/i.test(n))
-            );
-            guests = uniqueSorted([...guests, ...cleaned]);
-            renderTable();
-            toast(`Import ${cleaned.length} nama (CSV)`, "good");
-          } else {
-            const data = await file.arrayBuffer();
-            const wb = XLSX.read(data, { type: "array" });
-            const wsName = wb.SheetNames[0];
-            const ws = wb.Sheets[wsName];
+          const rows = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            blankrows: false,
+          });
+          const names = rows
+            .map((r) => (r && r.length ? r[0] : ""))
+            .map((x) => normalizeName(x))
+            .filter(Boolean);
 
-            const rows = XLSX.utils.sheet_to_json(ws, {
-              header: 1,
-              blankrows: false,
-            });
-            const names = rows
-              .map((r) => (r && r.length ? r[0] : ""))
-              .map((x) => normalizeName(x))
-              .filter(Boolean);
-
-            const cleaned = names.filter(
-              (n, i) => !(i === 0 && /nama/i.test(n))
-            );
-            guests = uniqueSorted([...guests, ...cleaned]);
-            renderTable();
-            toast(`Import ${cleaned.length} nama (Excel)`, "good");
-          }
+          const cleaned = names.filter((n, i) => !(i === 0 && /nama/i.test(n)));
+          guests = uniqueSorted([...guests, ...cleaned]);
+          renderTable();
+          toast(`Import ${cleaned.length} nama (Excel)`, "good");
         } catch (err) {
           console.error(err);
           toast(
-            "Gagal membaca file. Coba format lain (CSV) atau periksa struktur file.",
+            "Gagal membaca file Excel. Periksa struktur file (kolom pertama berisi Nama Tamu) dan coba lagi.",
             "bad"
           );
         } finally {
@@ -861,14 +844,24 @@ ____________________`;
 
       // Nice default for baseLink if user opened sender_tool.html from same folder
       (function autoFillBaseLink() {
-        if (baseLinkEl.value.trim()) return;
         try {
+          const currentValue = (baseLinkEl.value || "").trim();
+
+          if (currentValue) {
+            const cleaned = currentValue.replace(/\.html(?=$|[?#])/i, "");
+            if (cleaned !== currentValue) {
+              baseLinkEl.value = cleaned;
+              saveState();
+            }
+            return;
+          }
+
           const url = new URL(window.location.href);
-          // if sender_tool.html is in same folder, suggest PASKAwinanCHUAN.html
-          const suggested = url.href.replace(
-            /sender_tool\.html(\?.*)?$/i,
-            "PASKAwinanCHUAN"
-          );
+
+          const suggested = url.href
+            .replace(/sender_tool\.html(\?.*)?$/i, "")
+            .replace(/\/$/, "");
+
           baseLinkEl.value = suggested;
           saveState();
         } catch {
