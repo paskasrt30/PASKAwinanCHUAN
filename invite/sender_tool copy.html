@@ -318,22 +318,6 @@
       .ok {
         color: var(--good);
       }
-
-      .format-box {
-        margin-top: 10px;
-        padding: 10px 12px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .format-box ul {
-        margin: 8px 0 0 18px;
-        padding: 0;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.5;
-      }
     </style>
   </head>
   <body>
@@ -344,8 +328,7 @@
           <p class="sub">
             Buat link undangan per tamu (<span class="mono"
               >?to=Nama%20Tamu</span
-            >), siapkan teks undangan otomatis untuk tiap tamu, dan
-            import/export daftar tamu via Excel atau CSV.
+            >) dan siapkan teks pengantar yang siap dibagikan.
           </p>
         </div>
         <div class="pill">
@@ -377,7 +360,7 @@
                 placeholder="Contoh: https://domainkamu.com/PASKAwinanCHUAN"
               />
               <div class="hint">
-                Tool akan membuat link dan teks undangan personal:
+                Tool akan membuat link:
                 <span class="kbd">baseLink?to=Nama%20Tamu</span>
               </div>
             </div>
@@ -418,45 +401,23 @@
           </div>
           <div class="hint">
             Tips: bisa paste banyak nama sekaligus (pisah baris) lalu klik
-            <b>Tambah</b>. Bisa juga format
-            <span class="mono">Nama|081234567890</span>
-            untuk langsung menyimpan nomor WhatsApp.
+            <b>Tambah</b>.
           </div>
 
           <div style="height: 10px"></div>
 
-          <label>Import Excel / CSV</label>
-          <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+          <label>Import Excel (XLS/XLSX)</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" />
           <div class="hint">
-            Format sederhana: kolom pertama berisi <b>Nama Tamu</b>. Kolom kedua
-            opsional berisi <b>No WhatsApp</b>. Baris pertama boleh header. Bisa
-            import file <b>.xlsx</b>, <b>.xls</b>, atau <b>.csv</b>.
-          </div>
-          <div class="format-box">
-            <div class="small"><b>Template import:</b></div>
-            <ul>
-              <li>Kolom A: <b>Nama Tamu</b></li>
-              <li>Kolom B opsional: <b>No WhatsApp</b></li>
-              <li>
-                Baris pertama boleh diisi header:
-                <span class="mono">Nama Tamu</span> dan
-                <span class="mono">No WhatsApp</span>
-              </li>
-              <li>Mulai isi data dari baris ke-2</li>
-              <li>Satu tamu per baris</li>
-            </ul>
+            Format sederhana: kolom pertama berisi <b>Nama Tamu</b>. Baris
+            pertama boleh header. Hanya file Excel (.xlsx, .xls) yang didukung.
           </div>
 
           <div class="actions">
             <button class="primary" id="btnGenerate">
               Generate daftar & link
             </button>
-            <button class="warn" id="btnDownloadTemplate">
-              Download template import
-            </button>
-            <button class="warn" id="btnExportXlsx">
-              Export Excel (XLSX/CSV)
-            </button>
+            <button class="warn" id="btnExportXlsx">Export Excel (XLSX)</button>
           </div>
 
           <div class="list">
@@ -477,7 +438,6 @@
                     <th style="width: 36px">#</th>
                     <th>Nama Tamu</th>
                     <th>Link Undangan</th>
-                    <th>No WhatsApp</th>
                     <th style="width: 270px">Aksi</th>
                   </tr>
                 </thead>
@@ -486,12 +446,9 @@
             </div>
 
             <div class="hint" style="margin-top: 10px">
-              Tabel menampilkan <b>link undangan</b> dan <b>No WhatsApp</b> per
-              tamu. Teks undangan tetap dibuat otomatis dan akan ikut saat
-              <b>export Excel/CSV</b>. Jika nomor WhatsApp tersedia, tombol
-              <b>WhatsApp</b> akan langsung membuka chat ke nomor tersebut
-              dengan teks yang sudah terisi. Jika nomor belum ada, WhatsApp akan
-              terbuka tanpa tujuan nomor tertentu.
+              Aksi <b>WhatsApp</b> akan membuka chat dengan teks pengantar yang
+              sudah terisi. Jika browser tidak mengizinkan otomatis, gunakan
+              <b>Copy</b> lalu paste manual.
             </div>
           </div>
         </div>
@@ -500,8 +457,8 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- SheetJS for Excel import/export (CDN). If CDN fails, app falls back to CSV. -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS for Excel import (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
     <script>
       const LS_KEY = "sender_tool_v1";
@@ -537,8 +494,7 @@ ____________________`;
       const statusEl = el("status");
       const toastEl = el("toast");
 
-      let guests = []; // array of objects: { name, phone }
-      let toastTimer = null;
+      let guests = []; // array of strings
 
       function toast(msg, kind = "info") {
         toastEl.textContent = msg;
@@ -549,64 +505,22 @@ ____________________`;
             : kind === "good"
             ? "rgba(68,208,123,0.35)"
             : "rgba(255,255,255,0.14)";
-
-        if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-          toastEl.classList.remove("show");
-          toastTimer = null;
-        }, 1800);
+        setTimeout(() => toastEl.classList.remove("show"), 1600);
       }
 
       function normalizeName(name) {
         return (name || "").toString().replace(/\s+/g, " ").trim();
       }
 
-      function normalizePhone(phone) {
-        const raw = (phone || "").toString().trim();
-        if (!raw) return "";
-        let cleaned = raw.replace(/[^\d+]/g, "");
-        if (cleaned.startsWith("+")) {
-          cleaned = cleaned.slice(1);
-        }
-        if (cleaned.startsWith("0")) {
-          cleaned = `62${cleaned.slice(1)}`;
-        }
-        return cleaned;
-      }
-
-      function makeGuest(name, phone = "") {
-        return {
-          name: normalizeName(name),
-          phone: normalizePhone(phone),
-        };
-      }
-
       function uniqueSorted(list) {
         const map = new Map();
-        list.forEach((item) => {
-          const guest =
-            typeof item === "string"
-              ? makeGuest(item)
-              : makeGuest(item?.name, item?.phone);
-
-          if (!guest.name) return;
-
-          const key = guest.name.toLowerCase();
-          const existing = map.get(key);
-
-          if (!existing) {
-            map.set(key, guest);
-            return;
-          }
-
-          map.set(key, {
-            name: existing.name || guest.name,
-            phone: guest.phone || existing.phone,
-          });
+        list.forEach((n) => {
+          const clean = normalizeName(n);
+          if (!clean) return;
+          map.set(clean.toLowerCase(), clean);
         });
-
         return Array.from(map.values()).sort((a, b) =>
-          a.name.localeCompare(b.name, "id")
+          a.localeCompare(b, "id")
         );
       }
 
@@ -674,39 +588,36 @@ ____________________`;
 
         const base = baseLinkEl.value.trim();
 
-        guests.forEach((guest, idx) => {
-          const name = guest.name;
-          const phone = guest.phone || "";
+        guests.forEach((name, idx) => {
           const link = buildGuestLink(base, name);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td>
-        <div style="font-weight:650">${escapeHtml(name)}</div>
-        <div class="small muted">${escapeHtml(previewLabel(name))}</div>
-      </td>
-      <td><div class="link">${escapeHtml(
-        link || "(isi link undangan dulu)"
-      )}</div></td>
-      <td><div class="link">${escapeHtml(phone || "-")}</div></td>
-      <td>
-        <div class="actions" style="margin:0">
-          <button class="good" data-act="copy-link" data-name="${escapeAttr(
-            name
-          )}">Copy Link</button>
-          <button class="primary" data-act="copy-text" data-name="${escapeAttr(
-            name
-          )}">Copy Teks</button>
-          <button class="warn" data-act="wa" data-name="${escapeAttr(
-            name
-          )}">WhatsApp</button>
-          <button class="bad" data-act="del" data-name="${escapeAttr(
-            name
-          )}">Hapus</button>
-        </div>
-      </td>
-    `;
+            <td>${idx + 1}</td>
+            <td>
+              <div style="font-weight:650">${escapeHtml(name)}</div>
+              <div class="small muted">${escapeHtml(previewLabel(name))}</div>
+            </td>
+            <td><div class="link">${escapeHtml(
+              link || "(isi link undangan dulu)"
+            )}</div></td>
+            <td>
+              <div class="actions" style="margin:0">
+                <button class="good" data-act="copy-link" data-name="${escapeAttr(
+                  name
+                )}">Copy Link</button>
+                <button class="primary" data-act="copy-text" data-name="${escapeAttr(
+                  name
+                )}">Copy Teks</button>
+                <button class="warn" data-act="wa" data-name="${escapeAttr(
+                  name
+                )}">WhatsApp</button>
+                <button class="bad" data-act="del" data-name="${escapeAttr(
+                  name
+                )}">Hapus</button>
+              </div>
+            </td>
+          `;
           guestTableEl.appendChild(tr);
         });
 
@@ -714,6 +625,7 @@ ____________________`;
       }
 
       function previewLabel(name) {
+        // simple label line for readability
         return `to=${encodeURIComponent(name)}`;
       }
 
@@ -730,7 +642,6 @@ ____________________`;
             }[c])
         );
       }
-
       function escapeAttr(s) {
         return escapeHtml(s);
       }
@@ -740,6 +651,7 @@ ____________________`;
           await navigator.clipboard.writeText(text);
           toast("Tersalin ke clipboard", "good");
         } catch {
+          // fallback
           const ta = document.createElement("textarea");
           ta.value = text;
           document.body.appendChild(ta);
@@ -753,22 +665,12 @@ ____________________`;
       function addGuestsFromText(raw) {
         const lines = (raw || "")
           .split(/\r?\n/)
-          .map((x) => x.trim())
+          .map((x) => normalizeName(x))
           .filter(Boolean);
-
         if (!lines.length) return;
-
-        const parsed = lines.map((line) => {
-          const parts = line.split("|");
-          if (parts.length >= 2) {
-            return makeGuest(parts[0], parts[1]);
-          }
-          return makeGuest(line, "");
-        });
-
-        guests = uniqueSorted([...guests, ...parsed]);
+        guests = uniqueSorted([...guests, ...lines]);
         renderTable();
-        toast(`Tambah ${parsed.length} tamu`, "good");
+        toast(`Tambah ${lines.length} nama`, "good");
       }
 
       function ensureBaseLink() {
@@ -780,68 +682,6 @@ ____________________`;
         return true;
       }
 
-      function isXlsxReady() {
-        return typeof window.XLSX !== "undefined";
-      }
-
-      function downloadBlob(filename, blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-
-      function exportCsv(filename, rows) {
-        const csv = rows
-          .map((row) =>
-            row
-              .map((cell) => {
-                const value = (cell ?? "").toString().replace(/"/g, '""');
-                return `"${value}"`;
-              })
-              .join(",")
-          )
-          .join("\r\n");
-
-        const blob = new Blob(["\ufeff" + csv], {
-          type: "text/csv;charset=utf-8;",
-        });
-        downloadBlob(filename, blob);
-      }
-
-      function getTemplateRows() {
-        return [
-          ["Nama Tamu", "No WhatsApp"],
-          ["Bapak Andi", "6281234567890"],
-          ["Ibu Sinta", "6281298765432"],
-          ["Keluarga Budi", ""],
-        ];
-      }
-
-      function downloadTemplateImport() {
-        const rows = getTemplateRows();
-
-        if (isXlsxReady()) {
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.aoa_to_sheet(rows);
-          ws["!cols"] = [{ wch: 30 }];
-          XLSX.utils.book_append_sheet(wb, ws, "Template Import");
-          XLSX.writeFile(wb, "template_import_tamu.xlsx");
-          toast("Template import terunduh", "good");
-          return;
-        }
-
-        exportCsv("template_import_tamu.csv", rows);
-        toast(
-          "Library Excel tidak tersedia, template diunduh sebagai CSV",
-          "good"
-        );
-      }
-
       function exportXlsx() {
         if (!guests.length) {
           toast("Daftar tamu masih kosong.", "bad");
@@ -850,55 +690,28 @@ ____________________`;
         if (!ensureBaseLink()) return;
 
         const base = baseLinkEl.value.trim();
-        const rows = [
-          ["nama_tamu", "no_whatsapp", "link_undangan", "teks_undangan"],
-        ];
+        const rows = [["nama_tamu", "link_undangan"]];
+        guests.forEach((name) => rows.push([name, buildGuestLink(base, name)]));
 
-        guests.forEach((guest) =>
-          rows.push([
-            guest.name,
-            guest.phone || "",
-            buildGuestLink(base, guest.name),
-            fillTemplateForGuest(guest.name),
-          ])
-        );
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
 
-        if (isXlsxReady()) {
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.aoa_to_sheet(rows);
-          ws["!cols"] = [{ wch: 32 }, { wch: 22 }, { wch: 80 }, { wch: 120 }];
-          XLSX.utils.book_append_sheet(wb, ws, "Undangan");
-          XLSX.writeFile(wb, "undangan_links.xlsx");
-          toast(
-            "Excel berisi nomor WhatsApp, link, dan teks undangan berhasil terunduh",
-            "good"
-          );
-          return;
-        }
+        // Optional: set nicer column widths
+        ws["!cols"] = [{ wch: 32 }, { wch: 80 }];
 
-        exportCsv("undangan_links.csv", rows);
-        toast(
-          "File CSV berisi nomor WhatsApp, link, dan teks undangan berhasil terunduh",
-          "good"
-        );
+        XLSX.utils.book_append_sheet(wb, ws, "Undangan");
+        XLSX.writeFile(wb, "undangan_links.xlsx");
+        toast("Excel terunduh", "good");
       }
 
       function openWhatsApp(name) {
         if (!ensureBaseLink()) return;
-
-        const guest = guests.find(
-          (g) => g.name.toLowerCase() === name.toLowerCase()
-        );
-        const phone = guest?.phone || "";
         const msg = fillTemplateForGuest(name);
-
-        const waUrl = phone
-          ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
-          : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
         window.open(waUrl, "_blank", "noopener");
       }
 
+      // Events
       el("btnAdd").addEventListener("click", () => {
         addGuestsFromText(guestInputEl.value);
         guestInputEl.value = "";
@@ -952,10 +765,6 @@ ____________________`;
       });
 
       el("btnExportXlsx").addEventListener("click", exportXlsx);
-      el("btnDownloadTemplate").addEventListener(
-        "click",
-        downloadTemplateImport
-      );
 
       guestTableEl.addEventListener("click", async (e) => {
         const btn = e.target.closest("button");
@@ -965,9 +774,7 @@ ____________________`;
         if (!act || !name) return;
 
         if (act === "del") {
-          guests = guests.filter(
-            (g) => g.name.toLowerCase() !== name.toLowerCase()
-          );
+          guests = guests.filter((g) => g.toLowerCase() !== name.toLowerCase());
           renderTable();
           toast("Tamu dihapus", "good");
           return;
@@ -993,6 +800,7 @@ ____________________`;
         }
       });
 
+      // File import
       fileInputEl.addEventListener("change", async (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
@@ -1000,67 +808,28 @@ ____________________`;
         statusEl.textContent = "Membaca file...";
 
         try {
-          const fileName = (file.name || "").toLowerCase();
-          let cleaned = [];
+          const data = await file.arrayBuffer();
+          const wb = XLSX.read(data, { type: "array" });
+          const wsName = wb.SheetNames[0];
+          const ws = wb.Sheets[wsName];
 
-          if (fileName.endsWith(".csv")) {
-            const text = await file.text();
-            const rows = text
-              .split(/\r?\n/)
-              .map((line) => line.split(","))
-              .filter((r) => r && r.length);
+          const rows = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            blankrows: false,
+          });
+          const names = rows
+            .map((r) => (r && r.length ? r[0] : ""))
+            .map((x) => normalizeName(x))
+            .filter(Boolean);
 
-            cleaned = rows
-              .map((r) => makeGuest(r[0] || "", r[1] || ""))
-              .filter((g) => g.name)
-              .filter(
-                (g, i) =>
-                  !(
-                    i === 0 &&
-                    /nama/i.test(g.name) &&
-                    (!g.phone || /wa|hp|nomor/i.test(g.phone))
-                  )
-              );
-          } else {
-            if (!isXlsxReady()) {
-              throw new Error("Library XLSX tidak tersedia");
-            }
-
-            const data = await file.arrayBuffer();
-            const wb = XLSX.read(data, { type: "array" });
-            const wsName = wb.SheetNames[0];
-            const ws = wb.Sheets[wsName];
-
-            const rows = XLSX.utils.sheet_to_json(ws, {
-              header: 1,
-              blankrows: false,
-            });
-
-            cleaned = rows
-              .map((r) =>
-                makeGuest(
-                  r && r.length ? r[0] : "",
-                  r && r.length > 1 ? r[1] : ""
-                )
-              )
-              .filter((g) => g.name)
-              .filter(
-                (g, i) =>
-                  !(
-                    i === 0 &&
-                    /nama/i.test(g.name) &&
-                    (!g.phone || /wa|hp|nomor/i.test(g.phone))
-                  )
-              );
-          }
-
+          const cleaned = names.filter((n, i) => !(i === 0 && /nama/i.test(n)));
           guests = uniqueSorted([...guests, ...cleaned]);
           renderTable();
-          toast(`Import ${cleaned.length} tamu`, "good");
+          toast(`Import ${cleaned.length} nama (Excel)`, "good");
         } catch (err) {
           console.error(err);
           toast(
-            "Gagal membaca file. Gunakan template import, isi nama di kolom pertama dan nomor WhatsApp di kolom kedua bila ada, lalu simpan sebagai XLSX/XLS/CSV.",
+            "Gagal membaca file Excel. Periksa struktur file (kolom pertama berisi Nama Tamu) dan coba lagi.",
             "bad"
           );
         } finally {
@@ -1070,6 +839,10 @@ ____________________`;
         }
       });
 
+      // Init
+      loadState();
+
+      // Nice default for baseLink if user opened sender_tool.html from same folder
       (function autoFillBaseLink() {
         try {
           const currentValue = (baseLinkEl.value || "").trim();
